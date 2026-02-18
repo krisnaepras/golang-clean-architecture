@@ -45,10 +45,12 @@ func NewViper() *viper.Viper {
 	_ = config.BindEnv("database.pool.idle", "DB_POOL_IDLE")
 	_ = config.BindEnv("database.pool.max", "DB_POOL_MAX")
 	_ = config.BindEnv("database.pool.lifetime", "DB_POOL_LIFETIME")
+	_ = config.BindEnv("kafka.enabled", "KAFKA_ENABLED")
 	_ = config.BindEnv("kafka.bootstrap.servers", "KAFKA_BOOTSTRAP_SERVERS")
 	_ = config.BindEnv("kafka.group.id", "KAFKA_GROUP_ID")
 	_ = config.BindEnv("kafka.auto.offset.reset", "KAFKA_AUTO_OFFSET_RESET")
 	_ = config.BindEnv("kafka.producer.enabled", "KAFKA_PRODUCER_ENABLED")
+	_ = config.BindEnv("kafka.consumer.enabled", "KAFKA_CONSUMER_ENABLED")
 
 	return config
 }

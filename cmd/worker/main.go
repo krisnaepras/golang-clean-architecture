@@ -43,6 +43,10 @@ func main() {
 func RunAddressConsumer(logger *logrus.Logger, viperConfig *viper.Viper, ctx context.Context) {
 	logger.Info("setup address consumer")
 	addressConsumerGroup := config.NewKafkaConsumerGroup(viperConfig, logger)
+	if addressConsumerGroup == nil {
+		logger.Info("Kafka consumer disabled, skipping address consumer")
+		return
+	}
 	addressHandler := messaging.NewAddressConsumer(logger)
 	messaging.ConsumeTopic(ctx, addressConsumerGroup, "addresses", logger, addressHandler.Consume)
 }
@@ -50,6 +54,10 @@ func RunAddressConsumer(logger *logrus.Logger, viperConfig *viper.Viper, ctx con
 func RunContactConsumer(logger *logrus.Logger, viperConfig *viper.Viper, ctx context.Context) {
 	logger.Info("setup contact consumer")
 	contactConsumerGroup := config.NewKafkaConsumerGroup(viperConfig, logger)
+	if contactConsumerGroup == nil {
+		logger.Info("Kafka consumer disabled, skipping contact consumer")
+		return
+	}
 	contactHandler := messaging.NewContactConsumer(logger)
 	messaging.ConsumeTopic(ctx, contactConsumerGroup, "contacts", logger, contactHandler.Consume)
 }
@@ -57,6 +65,10 @@ func RunContactConsumer(logger *logrus.Logger, viperConfig *viper.Viper, ctx con
 func RunUserConsumer(logger *logrus.Logger, viperConfig *viper.Viper, ctx context.Context) {
 	logger.Info("setup user consumer")
 	userConsumerGroup := config.NewKafkaConsumerGroup(viperConfig, logger)
+	if userConsumerGroup == nil {
+		logger.Info("Kafka consumer disabled, skipping user consumer")
+		return
+	}
 	userHandler := messaging.NewUserConsumer(logger)
 	messaging.ConsumeTopic(ctx, userConsumerGroup, "users", logger, userHandler.Consume)
 }

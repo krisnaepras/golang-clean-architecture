@@ -23,6 +23,7 @@
         }
     },
     "kafka": {
+        "enabled": false,
         "bootstrap": {
             "servers": "localhost:9092"
         },
@@ -35,6 +36,9 @@
             }
         },
         "producer": {
+            "enabled": false
+        },
+        "consumer": {
             "enabled": false
         }
     }

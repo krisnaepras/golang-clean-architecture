@@ -9,6 +9,11 @@ import (
 )
 
 func NewKafkaConsumerGroup(config *viper.Viper, log *logrus.Logger) sarama.ConsumerGroup {
+	if !config.GetBool("kafka.enabled") || !config.GetBool("kafka.consumer.enabled") {
+		log.Info("Kafka consumer is disabled")
+		return nil
+	}
+
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Consumer.Return.Errors = true
 
@@ -30,7 +35,7 @@ func NewKafkaConsumerGroup(config *viper.Viper, log *logrus.Logger) sarama.Consu
 }
 
 func NewKafkaProducer(config *viper.Viper, log *logrus.Logger) sarama.SyncProducer {
-	if !config.GetBool("kafka.producer.enabled") {
+	if !config.GetBool("kafka.enabled") || !config.GetBool("kafka.producer.enabled") {
 		log.Info("Kafka producer is disabled")
 		return nil
 	}
