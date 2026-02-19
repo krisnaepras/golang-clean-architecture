@@ -151,6 +151,20 @@ func (c *UserController) GoogleOAuth(ctx *fiber.Ctx) error {
 	return ctx.Redirect(redirectURL, fiber.StatusTemporaryRedirect)
 }
 
+// GET /auth/google/callback
+func (c *UserController) GoogleOAuthCallback(ctx *fiber.Ctx) error {
+	request := new(model.OAuthCallbackRequest)
+	if err := ctx.QueryParser(request); err != nil {
+		return fiber.ErrBadRequest
+	}
+	response, err := c.UseCase.GoogleOAuthCallback(ctx.UserContext(), request, ctx.Get("User-Agent"), ctx.IP())
+	if err != nil {
+		c.Log.Warnf("GoogleOAuthCallback failed: %+v", err)
+		return err
+	}
+	return ctx.JSON(model.WebResponse[*model.TokenResponse]{Data: response})
+}
+
 // GET /auth/apple
 func (c *UserController) AppleOAuth(ctx *fiber.Ctx) error {
 	redirectURL, err := c.UseCase.AppleOAuthURL(ctx.UserContext())

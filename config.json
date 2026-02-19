@@ -31,13 +31,5 @@
     },
     "jwt": {
         "secret": "CHANGE_THIS_TO_A_STRONG_RANDOM_SECRET_IN_PRODUCTION"
-    },
-    "smtp": {
-        "host": "",
-        "port": 587,
-        "username": "",
-        "password": "",
-        "from": "noreply@dreampod.app",
-        "from_name": "Dreampod"
     }
 }

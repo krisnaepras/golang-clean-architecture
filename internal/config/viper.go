@@ -66,6 +66,9 @@ func NewViper() *viper.Viper {
 	_ = config.BindEnv("smtp.password", "SMTP_PASSWORD")
 	_ = config.BindEnv("smtp.from", "SMTP_FROM")
 	_ = config.BindEnv("smtp.from_name", "SMTP_FROM_NAME")
+	_ = config.BindEnv("google.oauth.client_id", "GOOGLE_OAUTH_CLIENT_ID")
+	_ = config.BindEnv("google.oauth.client_secret", "GOOGLE_OAUTH_CLIENT_SECRET")
+	_ = config.BindEnv("google.oauth.redirect_uri", "GOOGLE_OAUTH_REDIRECT_URI")
 
 	return config
 }

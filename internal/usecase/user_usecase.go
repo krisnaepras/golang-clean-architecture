@@ -5,7 +5,11 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"time"
 
 	"golang-clean-architecture/internal/entity"
@@ -40,8 +44,11 @@ type UserUseCase struct {
 	RefreshTokenRepository *repository.RefreshTokenRepository
 	OtpRepository          *repository.OtpRepository
 	OauthStateRepository   *repository.OauthStateRepository
-	Mailer                 *email.Mailer
-	OtpDeliveryRepository  *repository.OtpDeliveryRepository
+	Mailer                  *email.Mailer
+	OtpDeliveryRepository   *repository.OtpDeliveryRepository
+	GoogleOAuthClientID     string
+	GoogleOAuthClientSecret string
+	GoogleOAuthRedirectURI  string
 }
 
 func NewUserUseCase(
@@ -56,19 +63,23 @@ func NewUserUseCase(
 	oauthStateRepo *repository.OauthStateRepository,
 	mailer *email.Mailer,
 	otpDeliveryRepo *repository.OtpDeliveryRepository,
+	googleClientID, googleClientSecret, googleRedirectURI string,
 ) *UserUseCase {
 	return &UserUseCase{
-		DB:                     db,
-		Log:                    logger,
-		Validate:               validate,
-		JwtSecret:              jwtSecret,
-		UserRepository:         userRepo,
-		AuthProviderRepository: authProviderRepo,
-		RefreshTokenRepository: refreshTokenRepo,
-		OtpRepository:          otpRepo,
-		OauthStateRepository:   oauthStateRepo,
-		Mailer:                 mailer,
-		OtpDeliveryRepository:  otpDeliveryRepo,
+		DB:                      db,
+		Log:                     logger,
+		Validate:                validate,
+		JwtSecret:               jwtSecret,
+		UserRepository:          userRepo,
+		AuthProviderRepository:  authProviderRepo,
+		RefreshTokenRepository:  refreshTokenRepo,
+		OtpRepository:           otpRepo,
+		OauthStateRepository:    oauthStateRepo,
+		Mailer:                  mailer,
+		OtpDeliveryRepository:   otpDeliveryRepo,
+		GoogleOAuthClientID:     googleClientID,
+		GoogleOAuthClientSecret: googleClientSecret,
+		GoogleOAuthRedirectURI:  googleRedirectURI,
 	}
 }
 
@@ -633,10 +644,153 @@ func (c *UserUseCase) GoogleOAuthURL(ctx context.Context) (string, error) {
 		return "", fiber.ErrInternalServerError
 	}
 
-	// TODO: ganti dengan google OAuth config dari viper
-	// Contoh: https://accounts.google.com/o/oauth2/v2/auth?client_id=...
-	redirectURL := fmt.Sprintf("https://accounts.google.com/o/oauth2/v2/auth?state=%s&response_type=code&scope=openid+email+profile", stateVal)
-	return redirectURL, nil
+	params := url.Values{
+		"client_id":     {c.GoogleOAuthClientID},
+		"redirect_uri":  {c.GoogleOAuthRedirectURI},
+		"response_type": {"code"},
+		"scope":         {"openid email profile"},
+		"state":         {stateVal},
+		"access_type":   {"online"},
+	}
+	return "https://accounts.google.com/o/oauth2/v2/auth?" + params.Encode(), nil
+}
+
+type googleTokenResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+}
+
+type googleUserInfo struct {
+	Sub           string `json:"id"`
+	Email         string `json:"email"`
+	EmailVerified bool   `json:"verified_email"`
+	Name          string `json:"name"`
+	Picture       string `json:"picture"`
+}
+
+func (c *UserUseCase) exchangeGoogleCode(code string) (*googleUserInfo, error) {
+	resp, err := http.PostForm("https://oauth2.googleapis.com/token", url.Values{
+		"code":          {code},
+		"client_id":     {c.GoogleOAuthClientID},
+		"client_secret": {c.GoogleOAuthClientSecret},
+		"redirect_uri":  {c.GoogleOAuthRedirectURI},
+		"grant_type":    {"authorization_code"},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("token exchange: %w", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("token exchange failed (%d): %s", resp.StatusCode, body)
+	}
+	var tokenResp googleTokenResponse
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		return nil, fmt.Errorf("parse token: %w", err)
+	}
+
+	req, _ := http.NewRequest(http.MethodGet, "https://www.googleapis.com/oauth2/v2/userinfo", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenResp.AccessToken)
+	infoResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("userinfo request: %w", err)
+	}
+	defer infoResp.Body.Close()
+	infoBody, _ := io.ReadAll(infoResp.Body)
+	if infoResp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("userinfo failed (%d): %s", infoResp.StatusCode, infoBody)
+	}
+	var userInfo googleUserInfo
+	if err := json.Unmarshal(infoBody, &userInfo); err != nil {
+		return nil, fmt.Errorf("parse userinfo: %w", err)
+	}
+	return &userInfo, nil
+}
+
+func (c *UserUseCase) GoogleOAuthCallback(ctx context.Context, request *model.OAuthCallbackRequest, deviceInfo, ip string) (*model.TokenResponse, error) {
+	if err := c.Validate.Struct(request); err != nil {
+		return nil, fiber.ErrBadRequest
+	}
+
+	// 1. Validate & consume state
+	tx := c.DB.WithContext(ctx).Begin()
+	defer tx.Rollback()
+
+	oauthState := new(entity.OauthState)
+	if err := c.OauthStateRepository.FindByState(tx, oauthState, request.State); err != nil {
+		return nil, fiber.NewError(fiber.StatusBadRequest, "invalid or expired state")
+	}
+	if oauthState.Provider != "google" {
+		return nil, fiber.ErrBadRequest
+	}
+	if err := tx.Delete(oauthState).Error; err != nil {
+		return nil, fiber.ErrInternalServerError
+	}
+	if err := tx.Commit().Error; err != nil {
+		return nil, fiber.ErrInternalServerError
+	}
+
+	// 2. Exchange code → user info
+	googleUser, err := c.exchangeGoogleCode(request.Code)
+	if err != nil {
+		c.Log.Warnf("Google OAuth exchange failed: %+v", err)
+		return nil, fiber.NewError(fiber.StatusBadGateway, "failed to authenticate with Google")
+	}
+
+	// 3. Upsert user + provider
+	tx2 := c.DB.WithContext(ctx).Begin()
+	defer tx2.Rollback()
+
+	provider := new(entity.UserAuthProvider)
+	var userID string
+	if err := c.AuthProviderRepository.FindByProvider(tx2, provider, "google", googleUser.Sub); err != nil {
+		// First time — create user + provider
+		user := &entity.User{
+			ID:            uuid.New().String(),
+			FullName:      googleUser.Name,
+			Email:         googleUser.Email,
+			ProfileImage:  googleUser.Picture,
+			IsActive:      true,
+			EmailVerified: googleUser.EmailVerified,
+		}
+		if err := c.UserRepository.Create(tx2, user); err != nil {
+			c.Log.Warnf("GoogleOAuthCallback create user: %+v", err)
+			return nil, fiber.ErrInternalServerError
+		}
+		newProvider := &entity.UserAuthProvider{
+			ID:             uuid.New().String(),
+			UserID:         user.ID,
+			Provider:       "google",
+			ProviderUserID: googleUser.Sub,
+			Email:          googleUser.Email,
+		}
+		if err := c.AuthProviderRepository.Create(tx2, newProvider); err != nil {
+			c.Log.Warnf("GoogleOAuthCallback create provider: %+v", err)
+			return nil, fiber.ErrInternalServerError
+		}
+		if err := tx2.Exec("INSERT INTO user_roles (user_id, role_id) SELECT ?, id FROM roles WHERE code = 'CUSTOMER'", user.ID).Error; err != nil {
+			c.Log.Warnf("GoogleOAuthCallback assign role: %+v", err)
+			return nil, fiber.ErrInternalServerError
+		}
+		userID = user.ID
+	} else {
+		userID = provider.UserID
+	}
+
+	_, roles, err := c.UserRepository.FindWithRoles(tx2, userID)
+	if err != nil {
+		return nil, fiber.ErrInternalServerError
+	}
+
+	tokenResp, err := c.issueTokenPair(tx2, userID, roles, deviceInfo, ip)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx2.Commit().Error; err != nil {
+		return nil, fiber.ErrInternalServerError
+	}
+	return tokenResp, nil
 }
 
 // ── Apple OAuth ────────────────────────────────────────────────────────────────

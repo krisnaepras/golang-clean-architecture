@@ -49,6 +49,9 @@ func Bootstrap(config *BootstrapConfig) {
 		oauthStateRepository,
 		config.Mailer,
 		otpDeliveryRepository,
+		config.Config.GetString("google.oauth.client_id"),
+		config.Config.GetString("google.oauth.client_secret"),
+		config.Config.GetString("google.oauth.redirect_uri"),
 	)
 
 	// setup controllers

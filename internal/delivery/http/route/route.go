@@ -30,6 +30,7 @@ func (c *RouteConfig) SetupGuestRoute() {
 	auth.Post("/reset-password", c.UserController.ResetPassword)
 
 	auth.Get("/google", c.UserController.GoogleOAuth)
+	auth.Get("/google/callback", c.UserController.GoogleOAuthCallback)
 	auth.Get("/apple", c.UserController.AppleOAuth)
 }
 

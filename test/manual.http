@@ -91,3 +91,16 @@ Authorization: Bearer {{login.response.body.$.data.access_token}}
 {
   "refresh_token": "{{login.response.body.$.data.refresh_token}}"
 }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# OAUTH — Social login
+# ─────────────────────────────────────────────────────────────────────────────
+
+### Google OAuth — Step 1: Open in browser to get Google login URL (redirects to Google)
+GET {{baseUrl}}/api/auth/google
+
+### Google OAuth — Step 2: callback (Google redirects here with code & state)
+# Setelah login di Google, Google akan redirect ke:
+# http://localhost:3000/api/auth/google/callback?code=...&state=...
+# Endpoint ini mengembalikan access_token + refresh_token langsung
+GET {{baseUrl}}/api/auth/google/callback?code=REPLACE_WITH_CODE&state=REPLACE_WITH_STATE
