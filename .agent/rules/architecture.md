@@ -86,7 +86,8 @@ test/                    # Integration tests
 5. **Validator struct tags** — validasi menggunakan `go-playground/validator/v10` via struct tags
 6. **Viper + .env config** — config.json sebagai base, .env sebagai override (env var takes priority)
 7. **Kafka optional** — Kafka producer bisa nil, selalu cek `if producer != nil` sebelum Send
-8. **GORM timestamps** — gunakan `autoCreateTime:milli` dan `autoUpdateTime:milli` (epoch milliseconds)
+8. **GORM timestamps** — gunakan `time.Time` dengan tag `autoCreateTime` dan `autoUpdateTime` (bukan epoch milli)
+    - DSN PostgreSQL: jika password kosong, **jangan sertakan** `password=` di DSN (pgx misparse `dbname` sebagai bagian password)
 9. **UUID** — gunakan `github.com/google/uuid` untuk generate ID
 10. **Logrus** — semua logging menggunakan `*logrus.Logger`
 
@@ -97,7 +98,6 @@ test/                    # Integration tests
 | HTTP          | `github.com/gofiber/fiber/v2` |
 | ORM           | `gorm.io/gorm`                |
 | DB (Postgres) | `gorm.io/driver/postgres`     |
-| DB (MySQL)    | `gorm.io/driver/mysql`        |
 | Validation    | `go-playground/validator/v10` |
 | Config        | `github.com/spf13/viper`      |
 | Env loader    | `github.com/joho/godotenv`    |

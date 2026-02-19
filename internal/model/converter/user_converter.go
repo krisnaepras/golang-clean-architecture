@@ -5,26 +5,16 @@ import (
 	"golang-clean-architecture/internal/model"
 )
 
-func UserToResponse(user *entity.User) *model.UserResponse {
+func UserToResponse(user *entity.User, roles []string) *model.UserResponse {
 	return &model.UserResponse{
-		ID:        user.ID,
-		Name:      user.Name,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-	}
-}
-
-func UserToTokenResponse(user *entity.User) *model.UserResponse {
-	return &model.UserResponse{
-		Token: user.Token,
-	}
-}
-
-func UserToEvent(user *entity.User) *model.UserEvent {
-	return &model.UserEvent{
-		ID:        user.ID,
-		Name:      user.Name,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
+		ID:            user.ID,
+		FullName:      user.FullName,
+		Email:         user.Email,
+		Phone:         user.Phone,
+		ProfileImage:  user.ProfileImage,
+		IsActive:      user.IsActive,
+		EmailVerified: user.EmailVerified,
+		Roles:         roles,
+		CreatedAt:     user.CreatedAt.UnixMilli(),
 	}
 }

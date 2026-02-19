@@ -8,12 +8,12 @@ import (
 )
 
 type UserProducer struct {
-	Producer[*model.UserEvent]
+	Producer[*model.UserRegisteredEvent]
 }
 
 func NewUserProducer(producer sarama.SyncProducer, log *logrus.Logger) *UserProducer {
 	return &UserProducer{
-		Producer: Producer[*model.UserEvent]{
+		Producer: Producer[*model.UserRegisteredEvent]{
 			Producer: producer,
 			Topic:    "users",
 			Log:      log,

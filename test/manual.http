@@ -1,125 +1,93 @@
+@baseUrl = http://localhost:3000
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AUTH — Guest endpoints (no token required)
+# ─────────────────────────────────────────────────────────────────────────────
+
 ### Register new user
-POST http://localhost:3000/api/users
+POST {{baseUrl}}/api/auth/register
 Content-Type: application/json
 
 {
-  "name": "Joko",
-  "id": "joko",
-  "password": "joko"
+  "full_name": "Joko Morro",
+  "email": "joko@example.com",
+  "password": "Password123!"
 }
 
-### Login user
-POST http://localhost:3000/api/users/_login
+### Verify email with OTP (lihat kode OTP di server log)
+POST {{baseUrl}}/api/auth/verify-email
 Content-Type: application/json
 
 {
-  "id": "joko",
-  "password": "joko"
+  "email": "joko@example.com",
+  "otp_code": "123456"
 }
 
-### Get user profile
-GET http://localhost:3000/api/users/_current
-Accept: application/json
-Authorization: {{token}}
-
-### Logout user
-DELETE http://localhost:3000/api/users
-Accept: application/json
-Authorization: {{token}}
-
-### Update user
-PATCH http://localhost:3000/api/users/_current
+### Login
+# @name login
+POST {{baseUrl}}/api/auth/login
 Content-Type: application/json
-Accept: application/json
-Authorization: {{token}}
 
 {
-  "name": "Joko Morro"
+  "email": "joko@example.com",
+  "password": "Password123!"
 }
 
-### Create contact
-POST http://localhost:3000/api/contacts
+### Refresh access token
+# @name refresh
+POST {{baseUrl}}/api/auth/refresh
 Content-Type: application/json
-Accept: application/json
-Authorization: {{token}}
 
 {
-  "first_name": "Joko",
-  "last_name": "Morro",
-  "phone": "08123456789",
+  "refresh_token": "{{login.response.body.$.data.refresh_token}}"
+}
+
+### Resend OTP
+POST {{baseUrl}}/api/auth/otp/resend
+Content-Type: application/json
+
+{
+  "email": "joko@example.com",
+  "purpose": "email_verification"
+}
+
+### Forgot password (request reset OTP)
+POST {{baseUrl}}/api/auth/forgot-password
+Content-Type: application/json
+
+{
   "email": "joko@example.com"
 }
 
-### Get detail contact
-GET http://localhost:3000/api/contacts/{{contactId}}
+### Reset password with OTP
+POST {{baseUrl}}/api/auth/reset-password
 Content-Type: application/json
-Accept: application/json
-Authorization: {{token}}
-
-### Search contacts
-GET http://localhost:3000/api/contacts?size=10&page=1&name=jo&phone=0812&email=joko
-Content-Type: application/json
-Accept: application/json
-Authorization: {{token}}
-
-### update contact
-PUT http://localhost:3000/api/contacts/{{contactId}}
-Content-Type: application/json
-Accept: application/json
-Authorization: {{token}}
 
 {
-  "first_name": "Budi",
-  "last_name": "Nugraha",
-  "phone": "088324324",
-  "email": "budi@example.com"
+  "email": "joko@example.com",
+  "otp_code": "123456",
+  "new_password": "NewPassword456!"
 }
 
-### delete contact
-DELETE http://localhost:3000/api/contacts/{{contactId}}
-Accept: application/json
-Authorization: {{token}}
+### OAuth — Google (redirect)
+GET {{baseUrl}}/api/auth/google
 
-### get all addresses
-GET http://localhost:3000/api/contacts/{{contactId}}/addresses
-Accept: application/json
-Authorization: {{token}}
+### OAuth — Apple (redirect)
+GET {{baseUrl}}/api/auth/apple
 
+# ─────────────────────────────────────────────────────────────────────────────
+# AUTH — Protected endpoints (token otomatis dari response Login di atas)
+# ─────────────────────────────────────────────────────────────────────────────
 
-### create new addresses
-POST http://localhost:3000/api/contacts/{{contactId}}/addresses
+### Get current user profile
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+
+### Logout (revoke refresh token)
+POST {{baseUrl}}/api/auth/logout
 Content-Type: application/json
-Accept: application/json
-Authorization: {{token}}
+Authorization: Bearer {{login.response.body.$.data.access_token}}
 
 {
-  "street": "Jl. Jalan",
-  "city": "Jakarta",
-  "province": "DKI Jakarta",
-  "country": "Indonesia",
-  "postal_code": "12345"
+  "refresh_token": "{{login.response.body.$.data.refresh_token}}"
 }
-
-### get address detail
-GET http://localhost:3000/api/contacts/{{contactId}}/addresses/{{addressId}}
-Accept: application/json
-Authorization: {{token}}
-
-### update address
-PUT http://localhost:3000/api/contacts/{{contactId}}/addresses/{{addressId}}
-Content-Type: application/json
-Accept: application/json
-Authorization: {{token}}
-
-{
-  "street": "Jl. Sudah Jadi",
-  "city": "Jakarta",
-  "province": "DKI Jakarta",
-  "country": "Indonesia",
-  "postal_code": "12345"
-}
-
-### delete address
-DELETE http://localhost:3000/api/contacts/{{contactId}}/addresses/{{addressId}}
-Accept: application/json
-Authorization: {{token}}

@@ -14,44 +14,27 @@ Gunakan skill ini ketika diminta menambah entity/tabel/domain baru ke project.
 
 ### Step 1: Create Migration Files
 
-Buat 4 file migration (MySQL up/down + PostgreSQL up/down):
+Buat 2 file migration (up + down):
 
 **File**: `db/migrations/{timestamp}_create_table_{table_name}.up.sql`
 
 ```sql
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 CREATE TABLE {table_name}
 (
-    id          VARCHAR(100) NOT NULL,
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     -- kolom sesuai kebutuhan
-    created_at  BIGINT       NOT NULL,
-    updated_at  BIGINT       NOT NULL,
-    PRIMARY KEY (id)
-) ENGINE = InnoDB;
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 ```
 
 **File**: `db/migrations/{timestamp}_create_table_{table_name}.down.sql`
 
 ```sql
 DROP TABLE IF EXISTS {table_name};
-```
-
-**File**: `db/migrations/{timestamp}_create_table_{table_name}_pg.up.sql`
-
-```sql
-CREATE TABLE {table_name}
-(
-    id          VARCHAR(100) NOT NULL,
-    -- kolom sesuai kebutuhan
-    created_at  BIGINT       NOT NULL,
-    updated_at  BIGINT       NOT NULL,
-    PRIMARY KEY (id)
-);
-```
-
-**File**: `db/migrations/{timestamp}_create_table_{table_name}_pg.down.sql`
-
-```sql
-DROP TABLE IF EXISTS {table_name};
+DROP EXTENSION IF EXISTS pgcrypto;
 ```
 
 ### Step 2: Create Entity
@@ -61,11 +44,13 @@ DROP TABLE IF EXISTS {table_name};
 ```go
 package entity
 
+import "time"
+
 type {Name} struct {
-    ID        string `gorm:"column:id;primaryKey"`
+    ID        string     `gorm:"column:id;primaryKey"`
     // ... fields sesuai migration
-    CreatedAt int64  `gorm:"column:created_at;autoCreateTime:milli"`
-    UpdatedAt int64  `gorm:"column:updated_at;autoCreateTime:milli;autoUpdateTime:milli"`
+    CreatedAt time.Time  `gorm:"column:created_at;autoCreateTime"`
+    UpdatedAt time.Time  `gorm:"column:updated_at;autoUpdateTime"`
 }
 
 func (e *{Name}) TableName() string {
@@ -116,7 +101,7 @@ Buat fungsi:
 
 ## Checklist
 
-- [ ] Migration files (up + down, MySQL + PostgreSQL)
+- [ ] Migration files (up + down, PostgreSQL)
 - [ ] Entity struct dengan TableName()
 - [ ] Response model
 - [ ] Request models (Create, Update, Get, Delete)

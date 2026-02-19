@@ -29,6 +29,7 @@ Baca semua file di `.agent/rules/` untuk memahami pattern setiap layer:
 - [.agent/skills/add-crud-endpoint.md](.agent/skills/add-crud-endpoint.md) — Menambah CRUD endpoint lengkap
 - [.agent/skills/add-kafka-event.md](.agent/skills/add-kafka-event.md) — Menambah Kafka event
 - [.agent/skills/add-migration.md](.agent/skills/add-migration.md) — Menambah database migration
+- [.agent/skills/add-api-testing.md](.agent/skills/add-api-testing.md) — Menulis integration test + manual.http setelah membuat endpoint
 
 ## Critical Rules Summary
 

@@ -1,15 +1,14 @@
 package config
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
 
-// NewViper loads configuration from config.json (base) and .env (override).
-// Environment variables take priority over config.json values.
+// NewViper loads configuration from .env (primary) and config.json (fallback for non-DB settings).
+// Database configuration is read exclusively from .env / environment variables.
 func NewViper() *viper.Viper {
 	// Load .env file if it exists — errors are silently ignored (file is optional)
 	_ = godotenv.Load(".env")
@@ -17,17 +16,26 @@ func NewViper() *viper.Viper {
 
 	config := viper.New()
 
+	// config.json is optional — used only for non-DB settings like app, web, log, kafka
 	config.SetConfigName("config")
 	config.SetConfigType("json")
 	config.AddConfigPath("./../")
 	config.AddConfigPath("./")
-	err := config.ReadInConfig()
-	if err != nil {
-		panic(fmt.Errorf("fatal error config file: %w \n", err))
-	}
+	_ = config.ReadInConfig() // ignore error — .env is the primary source
+
+	// Defaults for database (overridden by .env / environment variables)
+	config.SetDefault("database.driver", "postgres")
+	config.SetDefault("database.host", "localhost")
+	config.SetDefault("database.port", 5432)
+	config.SetDefault("database.username", "postgres")
+	config.SetDefault("database.password", "")
+	config.SetDefault("database.name", "dreampod")
+	config.SetDefault("database.pool.idle", 10)
+	config.SetDefault("database.pool.max", 100)
+	config.SetDefault("database.pool.lifetime", 300)
 
 	// Map SCREAMING_SNAKE_CASE env vars to viper dot-notation keys.
-	// Env vars (from .env or system) take priority over config.json.
+	// Env vars (from .env or system) take priority over defaults and config.json.
 	config.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	config.AutomaticEnv()
 
@@ -51,6 +59,7 @@ func NewViper() *viper.Viper {
 	_ = config.BindEnv("kafka.auto.offset.reset", "KAFKA_AUTO_OFFSET_RESET")
 	_ = config.BindEnv("kafka.producer.enabled", "KAFKA_PRODUCER_ENABLED")
 	_ = config.BindEnv("kafka.consumer.enabled", "KAFKA_CONSUMER_ENABLED")
+	_ = config.BindEnv("jwt.secret", "JWT_SECRET")
 
 	return config
 }

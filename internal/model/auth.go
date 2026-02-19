@@ -1,6 +1,6 @@
 package model
 
 type Auth struct {
-	// Login user id
-	ID string
+	ID    string
+	Roles []string // kode role, contoh: ["ADMIN", "MANAGER"]
 }

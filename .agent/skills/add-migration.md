@@ -7,7 +7,7 @@ Gunakan skill ini ketika perlu menambah atau mengubah tabel database (create tab
 ## Prerequisites
 
 - Deskripsi perubahan database yang diinginkan
-- Driver yang di-support (MySQL, PostgreSQL, atau keduanya)
+- Project ini **PostgreSQL only** — tidak perlu MySQL migration
 
 ## Steps
 
@@ -17,24 +17,27 @@ Gunakan format `YYYYMMDDHHmmss` berdasarkan waktu saat ini.
 
 Contoh: `20260218100000`
 
-### Step 2: Create MySQL Migration (jika diperlukan)
+### Step 2: Create Up Migration
 
 **File**: `db/migrations/{timestamp}_{description}.up.sql`
 
 Contoh — Create table:
 
 ```sql
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 CREATE TABLE {table_name}
 (
-    id          VARCHAR(100) NOT NULL,
-    name        VARCHAR(100) NOT NULL,
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        VARCHAR(255) NOT NULL,
     description TEXT         NULL,
-    parent_id   VARCHAR(100) NOT NULL,
-    created_at  BIGINT       NOT NULL,
-    updated_at  BIGINT       NOT NULL,
-    PRIMARY KEY (id),
-    FOREIGN KEY fk_{table}_{fk_column} ({fk_column}) REFERENCES {parent_table} (id)
-) ENGINE = InnoDB;
+    parent_id   UUID         NOT NULL,
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    CONSTRAINT fk_{child}_{parent} FOREIGN KEY (parent_id) REFERENCES {parent_table} (id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_{table}_{column} ON {table_name} ({column});
 ```
 
 Contoh — Add column:
@@ -49,12 +52,15 @@ Contoh — Add index:
 CREATE INDEX idx_{table}_{column} ON {table_name} ({column});
 ```
 
+### Step 3: Create Down Migration
+
 **File**: `db/migrations/{timestamp}_{description}.down.sql`
 
 Contoh — Drop table:
 
 ```sql
 DROP TABLE IF EXISTS {table_name};
+DROP EXTENSION IF EXISTS pgcrypto;
 ```
 
 Contoh — Remove column:
@@ -63,18 +69,13 @@ Contoh — Remove column:
 ALTER TABLE {table_name} DROP COLUMN {column_name};
 ```
 
-### Step 3: Create PostgreSQL Migration
+### Step 4: Run Migration
 
-**File**: `db/migrations/{timestamp}_{description}_pg.up.sql`
+```bash
+migrate -database "postgres://user:password@localhost:5432/dbname?sslmode=disable" -path db/migrations up
+```
 
-Sama dengan MySQL tapi tanpa `ENGINE = InnoDB` dan syntax PostgreSQL:
-
-- Foreign key: `CONSTRAINT fk_name FOREIGN KEY (col) REFERENCES table (col)`
-- Boolean: `BOOLEAN` bukan `TINYINT(1)`
-
-**File**: `db/migrations/{timestamp}_{description}_pg.down.sql`
-
-### Step 4: Update Entity (jika perlu)
+### Step 5: Update Entity (jika perlu)
 
 Jika migration menambah kolom baru, update struct entity di `internal/entity/{name}_entity.go`.
 
@@ -100,10 +101,8 @@ Jika ada field baru, update:
 
 ## Checklist
 
-- [ ] MySQL up migration
-- [ ] MySQL down migration (harus bisa rollback)
-- [ ] PostgreSQL up migration
-- [ ] PostgreSQL down migration
+- [ ] Up migration (PostgreSQL)
+- [ ] Down migration — harus bisa rollback
 - [ ] Entity updated (jika field berubah)
 - [ ] Model updated (jika field berubah)
 - [ ] Converter updated (jika field berubah)

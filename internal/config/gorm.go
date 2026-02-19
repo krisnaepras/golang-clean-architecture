@@ -40,8 +40,13 @@ func NewDatabase(viper *viper.Viper, log *logrus.Logger) *gorm.DB {
 			username, password, host, port, database)
 		db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{Logger: gormLogger})
 	case "postgres", "postgresql", "":
-		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=Asia/Jakarta",
-			host, username, password, database, port)
+		// Build DSN; omit password= when empty to avoid pgx parsing issues
+		dsn := fmt.Sprintf("host=%s user=%s dbname=%s port=%d sslmode=disable TimeZone=Asia/Jakarta",
+			host, username, database, port)
+		if password != "" {
+			dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=Asia/Jakarta",
+				host, username, password, database, port)
+		}
 		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: gormLogger})
 	default:
 		log.Fatalf("unsupported database driver: %s (supported: postgres, mysql)", driver)

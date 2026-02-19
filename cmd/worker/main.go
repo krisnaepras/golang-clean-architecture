@@ -21,45 +21,15 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	go RunUserConsumer(logger, viperConfig, ctx)
-	go RunContactConsumer(logger, viperConfig, ctx)
-	go RunAddressConsumer(logger, viperConfig, ctx)
 
 	terminateSignals := make(chan os.Signal, 1)
-	signal.Notify(terminateSignals, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
+	signal.Notify(terminateSignals, syscall.SIGINT, syscall.SIGTERM)
 
-	stop := false
-	for !stop {
-		select {
-		case s := <-terminateSignals:
-			logger.Info("Got one of stop signals, shutting down worker gracefully, SIGNAL NAME :", s)
-			cancel()
-			stop = true
-		}
-	}
+	s := <-terminateSignals
+	logger.Info("Got one of stop signals, shutting down worker gracefully, SIGNAL NAME :", s)
+	cancel()
 
 	time.Sleep(5 * time.Second) // wait for all consumers to finish processing
-}
-
-func RunAddressConsumer(logger *logrus.Logger, viperConfig *viper.Viper, ctx context.Context) {
-	logger.Info("setup address consumer")
-	addressConsumerGroup := config.NewKafkaConsumerGroup(viperConfig, logger)
-	if addressConsumerGroup == nil {
-		logger.Info("Kafka consumer disabled, skipping address consumer")
-		return
-	}
-	addressHandler := messaging.NewAddressConsumer(logger)
-	messaging.ConsumeTopic(ctx, addressConsumerGroup, "addresses", logger, addressHandler.Consume)
-}
-
-func RunContactConsumer(logger *logrus.Logger, viperConfig *viper.Viper, ctx context.Context) {
-	logger.Info("setup contact consumer")
-	contactConsumerGroup := config.NewKafkaConsumerGroup(viperConfig, logger)
-	if contactConsumerGroup == nil {
-		logger.Info("Kafka consumer disabled, skipping contact consumer")
-		return
-	}
-	contactHandler := messaging.NewContactConsumer(logger)
-	messaging.ConsumeTopic(ctx, contactConsumerGroup, "contacts", logger, contactHandler.Consume)
 }
 
 func RunUserConsumer(logger *logrus.Logger, viperConfig *viper.Viper, ctx context.Context) {

@@ -19,13 +19,13 @@ func NewUserConsumer(log *logrus.Logger) *UserConsumer {
 }
 
 func (c UserConsumer) Consume(message *sarama.ConsumerMessage) error {
-	UserEvent := new(model.UserEvent)
-	if err := json.Unmarshal(message.Value, UserEvent); err != nil {
-		c.Log.WithError(err).Error("error unmarshalling User event")
+	event := new(model.UserRegisteredEvent)
+	if err := json.Unmarshal(message.Value, event); err != nil {
+		c.Log.WithError(err).Error("error unmarshalling UserRegistered event")
 		return err
 	}
 
 	// TODO process event
-	c.Log.Infof("Received topic users with event: %v from partition %d", UserEvent, message.Partition)
+	c.Log.Infof("Received topic users with event: %v from partition %d", event, message.Partition)
 	return nil
 }

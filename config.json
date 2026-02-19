@@ -9,19 +9,6 @@
     "log": {
         "level": 6
     },
-    "database": {
-        "driver": "postgres",
-        "username": "postgres",
-        "password": "",
-        "host": "localhost",
-        "port": 5432,
-        "name": "golang_clean_architecture",
-        "pool": {
-            "idle": 10,
-            "max": 100,
-            "lifetime": 300
-        }
-    },
     "kafka": {
         "enabled": false,
         "bootstrap": {
@@ -41,5 +28,8 @@
         "consumer": {
             "enabled": false
         }
+    },
+    "jwt": {
+        "secret": "CHANGE_THIS_TO_A_STRONG_RANDOM_SECRET_IN_PRODUCTION"
     }
 }

@@ -1,12 +1,12 @@
 package model
 
-type UserEvent struct {
-	ID        string `json:"id,omitempty"`
-	Name      string `json:"name,omitempty"`
-	CreatedAt int64  `json:"created_at,omitempty"`
-	UpdatedAt int64  `json:"updated_at,omitempty"`
+type UserRegisteredEvent struct {
+	ID        string `json:"id"`
+	FullName  string `json:"full_name"`
+	Email     string `json:"email"`
+	CreatedAt int64  `json:"created_at"`
 }
 
-func (u *UserEvent) GetId() string {
+func (u *UserRegisteredEvent) GetId() string {
 	return u.ID
 }
