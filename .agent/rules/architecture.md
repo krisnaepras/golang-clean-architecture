@@ -114,3 +114,9 @@ test/                    # Integration tests
 - Struct: PascalCase — `UserUseCase`, `ContactRepository`
 - Constructor: `New{StructName}` — `NewUserUseCase()`, `NewContactRepository()`
 - Table method: `TableName() string` pada setiap entity
+
+## Agent Behavior Rules
+
+- **TIDAK BOLEH** melakukan `git commit` atau `git push` secara otomatis
+- Commit hanya boleh dilakukan jika user **secara eksplisit** mengizinkan di chat (contoh: "boleh langsung commit", "commit sekarang", "silakan commit")
+- Setelah implementasi selesai, cukup informasikan bahwa kode sudah siap dan minta konfirmasi sebelum commit
