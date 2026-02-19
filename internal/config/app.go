@@ -4,6 +4,7 @@ import (
 	"golang-clean-architecture/internal/delivery/http"
 	"golang-clean-architecture/internal/delivery/http/middleware"
 	"golang-clean-architecture/internal/delivery/http/route"
+	"golang-clean-architecture/internal/gateway/email"
 	"golang-clean-architecture/internal/repository"
 	"golang-clean-architecture/internal/usecase"
 
@@ -20,6 +21,7 @@ type BootstrapConfig struct {
 	Log      *logrus.Logger
 	Validate *validator.Validate
 	Config   *viper.Viper
+	Mailer   *email.Mailer // optional — nil = log OTP codes instead of emailing
 }
 
 func Bootstrap(config *BootstrapConfig) {
@@ -32,6 +34,7 @@ func Bootstrap(config *BootstrapConfig) {
 	refreshTokenRepository := repository.NewRefreshTokenRepository(config.Log)
 	otpRepository := repository.NewOtpRepository(config.Log)
 	oauthStateRepository := repository.NewOauthStateRepository(config.Log)
+	otpDeliveryRepository := repository.NewOtpDeliveryRepository(config.Log)
 
 	// setup use cases
 	userUseCase := usecase.NewUserUseCase(
@@ -44,6 +47,8 @@ func Bootstrap(config *BootstrapConfig) {
 		refreshTokenRepository,
 		otpRepository,
 		oauthStateRepository,
+		config.Mailer,
+		otpDeliveryRepository,
 	)
 
 	// setup controllers

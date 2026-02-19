@@ -18,6 +18,7 @@ func main() {
 		Log:      log,
 		Validate: validate,
 		Config:   viperConfig,
+		Mailer:   config.NewMailer(viperConfig, log),
 	})
 
 	webPort := viperConfig.GetInt("web.port")

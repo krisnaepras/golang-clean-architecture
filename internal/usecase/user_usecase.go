@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"golang-clean-architecture/internal/entity"
+	"golang-clean-architecture/internal/gateway/email"
 	"golang-clean-architecture/internal/model"
 	"golang-clean-architecture/internal/model/converter"
 	"golang-clean-architecture/internal/repository"
@@ -39,6 +40,8 @@ type UserUseCase struct {
 	RefreshTokenRepository *repository.RefreshTokenRepository
 	OtpRepository          *repository.OtpRepository
 	OauthStateRepository   *repository.OauthStateRepository
+	Mailer                 *email.Mailer
+	OtpDeliveryRepository  *repository.OtpDeliveryRepository
 }
 
 func NewUserUseCase(
@@ -51,6 +54,8 @@ func NewUserUseCase(
 	refreshTokenRepo *repository.RefreshTokenRepository,
 	otpRepo *repository.OtpRepository,
 	oauthStateRepo *repository.OauthStateRepository,
+	mailer *email.Mailer,
+	otpDeliveryRepo *repository.OtpDeliveryRepository,
 ) *UserUseCase {
 	return &UserUseCase{
 		DB:                     db,
@@ -62,6 +67,8 @@ func NewUserUseCase(
 		RefreshTokenRepository: refreshTokenRepo,
 		OtpRepository:          otpRepo,
 		OauthStateRepository:   oauthStateRepo,
+		Mailer:                 mailer,
+		OtpDeliveryRepository:  otpDeliveryRepo,
 	}
 }
 
@@ -121,6 +128,40 @@ func generateOtpCode() string {
 func hashOtp(code string) string {
 	sum := sha256.Sum256([]byte(code))
 	return hex.EncodeToString(sum[:])
+}
+
+// recordAndSendOTP sends the OTP via email (if Mailer is configured) and records the
+// delivery status in otp_deliveries. Best-effort: errors are logged but do NOT fail
+// the parent request. The OTP row must be committed to DB before calling this.
+func (c *UserUseCase) recordAndSendOTP(otpID, to, otpCode, purpose string) {
+	if c.Mailer == nil {
+		c.Log.Infof("OTP [%s] for %s: %s (SMTP not configured)", purpose, to, otpCode)
+		return
+	}
+
+	now := time.Now()
+	delivery := &entity.OtpDelivery{
+		ID:      uuid.New().String(),
+		OtpID:   otpID,
+		Channel: "email",
+		Provider: "smtp",
+		Status:  "pending",
+	}
+
+	if err := c.Mailer.SendOTP(to, otpCode, purpose); err != nil {
+		c.Log.Warnf("Failed to send OTP email to %s: %+v", to, err)
+		delivery.Status = "failed"
+		delivery.ErrorMessage = err.Error()
+	} else {
+		c.Log.Infof("OTP email sent to %s (purpose: %s)", to, purpose)
+		delivery.Status = "sent"
+		delivery.SentAt = &now
+	}
+
+	// Record delivery status best-effort (failures only logged, not propagated)
+	if err := c.OtpDeliveryRepository.Create(c.DB, delivery); err != nil {
+		c.Log.Warnf("Failed to record OTP delivery: %+v", err)
+	}
 }
 
 func (c *UserUseCase) issueTokenPair(db *gorm.DB, userID string, roles []string, deviceInfo, ip string) (*model.TokenResponse, error) {
@@ -260,8 +301,7 @@ func (c *UserUseCase) Register(ctx context.Context, request *model.RegisterReque
 		return fiber.ErrInternalServerError
 	}
 
-	// TODO: kirim email OTP ke request.Email dengan kode otpCode
-	c.Log.Infof("OTP for %s: %s (purpose: email_verification)", request.Email, otpCode)
+	c.recordAndSendOTP(otp.ID, request.Email, otpCode, "email_verification")
 	return nil
 }
 
@@ -484,8 +524,7 @@ func (c *UserUseCase) ForgotPassword(ctx context.Context, request *model.ForgotP
 		return fiber.ErrInternalServerError
 	}
 
-	// TODO: kirim email OTP ke request.Email
-	c.Log.Infof("Reset password OTP for %s: %s", request.Email, otpCode)
+	c.recordAndSendOTP(otp.ID, request.Email, otpCode, "reset_password")
 	return nil
 }
 
@@ -570,7 +609,7 @@ func (c *UserUseCase) ResendOtp(ctx context.Context, request *model.ResendOtpReq
 		return fiber.ErrInternalServerError
 	}
 
-	c.Log.Infof("Resend OTP for %s (purpose: %s): %s", request.Email, request.Purpose, otpCode)
+	c.recordAndSendOTP(otp.ID, request.Email, otpCode, request.Purpose)
 	return nil
 }
 

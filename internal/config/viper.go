@@ -60,6 +60,12 @@ func NewViper() *viper.Viper {
 	_ = config.BindEnv("kafka.producer.enabled", "KAFKA_PRODUCER_ENABLED")
 	_ = config.BindEnv("kafka.consumer.enabled", "KAFKA_CONSUMER_ENABLED")
 	_ = config.BindEnv("jwt.secret", "JWT_SECRET")
+	_ = config.BindEnv("smtp.host", "SMTP_HOST")
+	_ = config.BindEnv("smtp.port", "SMTP_PORT")
+	_ = config.BindEnv("smtp.username", "SMTP_USERNAME")
+	_ = config.BindEnv("smtp.password", "SMTP_PASSWORD")
+	_ = config.BindEnv("smtp.from", "SMTP_FROM")
+	_ = config.BindEnv("smtp.from_name", "SMTP_FROM_NAME")
 
 	return config
 }
