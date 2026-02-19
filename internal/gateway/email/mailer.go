@@ -52,7 +52,11 @@ func (m *Mailer) SendOTP(to, otpCode, purpose string) error {
 
 	opts := []gomail.Option{
 		gomail.WithPort(m.port),
-		gomail.WithTLSPolicy(gomail.TLSOpportunistic),
+	}
+	if m.port == 465 {
+		opts = append(opts, gomail.WithSSL())
+	} else {
+		opts = append(opts, gomail.WithTLSPolicy(gomail.TLSOpportunistic))
 	}
 	if m.username != "" {
 		opts = append(opts,
